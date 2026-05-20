@@ -418,35 +418,45 @@
         `).join("") || `<tr><td colspan="8">아직 응답이 없습니다.</td></tr>`;
     }
 
-    function loadResponses() {
+    function parseJsonp(text) {
+      const start = text.indexOf("(");
+      const end = text.lastIndexOf(")");
+      if (start === -1 || end === -1 || end <= start) {
+        throw new Error("Apps Script 응답 형식이 올바르지 않습니다.");
+      }
+      return JSON.parse(text.slice(start + 1, end));
+    }
+
+    async function loadResponses() {
       if (!isConfigured) {
         showMessage("Google Apps Script URL을 먼저 설정하세요.", true);
         return;
       }
       const callbackName = `receiveResponses_${Date.now()}`;
-      window[callbackName] = data => {
+      const key = encodeURIComponent(document.querySelector("#adminKey").value.trim());
+      if (key) localStorage.setItem("peerEvalAdminKey", document.querySelector("#adminKey").value.trim());
+      const url = `${config.appsScriptUrl}?callback=${callbackName}&key=${key}&department=${encodeURIComponent(selectedClass().sheetName || selectedClass().name)}&t=${Date.now()}`;
+
+      try {
+        const response = await fetch(url, { cache: "no-store", mode: "cors" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = parseJsonp(await response.text());
         if (data.error) {
           const detail = data.message ? ` (${data.message})` : "";
           const reason = data.error === "UNAUTHORIZED"
             ? "교수자 확인 키가 맞지 않습니다."
             : `Apps Script에서 오류가 발생했습니다.${detail}`;
           showMessage(reason, true);
-          delete window[callbackName];
-          script.remove();
           return;
         }
         rows = Array.isArray(data.rows) ? data.rows : [];
         render();
         showMessage(`${rows.length}개 평가 행을 불러왔습니다.`);
-        delete window[callbackName];
-        script.remove();
-      };
-      const script = document.createElement("script");
-      const key = encodeURIComponent(document.querySelector("#adminKey").value.trim());
-      if (key) localStorage.setItem("peerEvalAdminKey", document.querySelector("#adminKey").value.trim());
-      script.src = `${config.appsScriptUrl}?callback=${callbackName}&key=${key}&department=${encodeURIComponent(selectedClass().sheetName || selectedClass().name)}&t=${Date.now()}`;
-      script.onerror = () => showMessage("응답을 불러오지 못했습니다. Apps Script 배포 권한 또는 웹 앱 URL을 확인하세요.", true);
-      document.body.appendChild(script);
+      } catch (error) {
+        showMessage(`응답을 불러오지 못했습니다. Apps Script 배포 권한 또는 웹 앱 URL을 확인하세요. (${error.message})`, true);
+      }
     }
 
     function downloadCsv(filename, tableRows) {
