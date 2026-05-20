@@ -1,53 +1,77 @@
+const SPREADSHEET_ID = "";
+
 function doPost(e) {
-  const payload = JSON.parse(e.parameter.payload || "{}");
-  const sheet = getSheet_(payload.sheetName || payload.departmentName || "responses");
-  ensureHeader_(sheet);
+  try {
+    const payload = JSON.parse(e.parameter.payload || "{}");
+    const sheet = getSheet_(payload.sheetName || payload.departmentName || "responses");
+    ensureHeader_(sheet);
 
-  const rows = (payload.evaluations || []).map(item => [
-    new Date(),
-    payload.submittedAt || "",
-    payload.departmentId || "",
-    payload.departmentName || "",
-    payload.classCode || "",
-    payload.studentId || "",
-    payload.studentName || "",
-    payload.studentTeamId || "",
-    payload.studentTeamName || "",
-    item.targetTeamId || "",
-    item.targetTeamName || "",
-    Number(item.percent || 0),
-    JSON.stringify(item.scores || {}),
-    item.comment || "",
-    JSON.stringify(payload.criteria || []),
-    JSON.stringify(payload.teams || []),
-    payload.excludeSelfTeam === true ? "TRUE" : "FALSE"
-  ]);
+    const rows = (payload.evaluations || []).map(item => [
+      new Date(),
+      payload.submittedAt || "",
+      payload.departmentId || "",
+      payload.departmentName || "",
+      payload.classCode || "",
+      payload.studentId || "",
+      payload.studentName || "",
+      payload.studentTeamId || "",
+      payload.studentTeamName || "",
+      item.targetTeamId || "",
+      item.targetTeamName || "",
+      Number(item.percent || 0),
+      JSON.stringify(item.scores || {}),
+      item.comment || "",
+      JSON.stringify(payload.criteria || []),
+      JSON.stringify(payload.teams || []),
+      payload.excludeSelfTeam === true ? "TRUE" : "FALSE"
+    ]);
 
-  if (rows.length) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+    if (rows.length) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+    }
+
+    return HtmlService.createHtmlOutput("OK");
+  } catch (error) {
+    return HtmlService.createHtmlOutput(`ERROR: ${error.message}`);
   }
-
-  return HtmlService.createHtmlOutput("OK");
 }
 
 function doGet(e) {
   const callback = e.parameter.callback || "callback";
-  const adminKey = PropertiesService.getScriptProperties().getProperty("ADMIN_KEY") || "";
-  if (adminKey && e.parameter.key !== adminKey) {
-    const denied = `${callback}(${JSON.stringify({ error: "UNAUTHORIZED", rows: [] })});`;
+  try {
+    const adminKey = PropertiesService.getScriptProperties().getProperty("ADMIN_KEY") || "";
+    if (adminKey && e.parameter.key !== adminKey) {
+      const denied = `${callback}(${JSON.stringify({ error: "UNAUTHORIZED", rows: [] })});`;
+      return ContentService
+        .createTextOutput(denied)
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    const rows = readRows_(e.parameter.department || "responses");
+    const output = `${callback}(${JSON.stringify({ rows })});`;
     return ContentService
-      .createTextOutput(denied)
+      .createTextOutput(output)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } catch (error) {
+    const output = `${callback}(${JSON.stringify({ error: "SERVER_ERROR", message: error.message, rows: [] })});`;
+    return ContentService
+      .createTextOutput(output)
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-  const rows = readRows_(e.parameter.department || "responses");
-  const output = `${callback}(${JSON.stringify({ rows })});`;
-  return ContentService
-    .createTextOutput(output)
-    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+function getSpreadsheet_() {
+  if (SPREADSHEET_ID) {
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+  }
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) {
+    throw new Error("스프레드시트에 연결된 Apps Script가 아닙니다. Code.gs의 SPREADSHEET_ID에 Google Sheet ID를 입력하세요.");
+  }
+  return spreadsheet;
 }
 
 function getSheet_(sheetName) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getSpreadsheet_();
   const safeName = String(sheetName || "responses").replace(/[\\/?*[\]:]/g, "").slice(0, 99) || "responses";
   return spreadsheet.getSheetByName(safeName) || spreadsheet.insertSheet(safeName);
 }
