@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>동료평가 집계</title>
+  <script src="config.js"></script>
+  <style>
+    :root {
+      --bg: #f5f4ef;
+      --ink: #222826;
+      --muted: #65706d;
+      --line: #d8ded9;
+      --surface: #fff;
+      --soft: #eef5f2;
+      --accent: #166b5d;
+      --accent-2: #e9aa42;
+      --danger: #b83a30;
+      --shadow: 0 14px 34px rgba(31, 42, 38, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: linear-gradient(180deg, #eaf2ef, var(--bg));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      line-height: 1.55;
+    }
+
+    button, input { font: inherit; }
+
+    .wrap {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 24px 14px 46px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 12px 0 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 6vw, 44px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 9px 0 0;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button, a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .panel, .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .metric {
+      padding: 16px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 30px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .panel {
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      color: #31413e;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .notice {
+      padding: 12px 13px;
+      border-left: 4px solid var(--accent-2);
+      border-radius: 7px;
+      background: #fff7e7;
+      color: #564228;
+    }
+
+    .error {
+      border-left-color: var(--danger);
+      background: #fff0ee;
+      color: #6e2923;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 11px;
+    }
+
+    .bar-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 800;
+    }
+
+    .bar-track {
+      height: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dfe6e3;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 760px) {
+      header {
+        display: grid;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>동료평가 집계</h1>
+        <p class="lead" id="subtitle">응답을 불러와 모둠별 점수를 계산합니다.</p>
+      </div>
+      <div class="toolbar">
+        <input id="adminKey" type="password" placeholder="교수자 확인 키">
+        <button class="primary" type="button" id="loadBtn">응답 불러오기</button>
+        <button class="secondary" type="button" id="exportSummary">집계 CSV</button>
+        <button class="secondary" type="button" id="exportRaw">원자료 CSV</button>
+        <a class="button secondary" href="index.html">학생용 화면</a>
+      </div>
+    </header>
+
+    <div class="notice hidden" id="setupNotice">
+      `config.js`에 Google Apps Script 웹 앱 URL을 먼저 입력하세요.
+    </div>
+    <div class="notice hidden" id="message"></div>
+
+    <section class="grid metrics">
+      <div class="metric"><b id="mTeams">0</b><span>모둠</span></div>
+      <div class="metric"><b id="mStudents">0</b><span>제출 학생</span></div>
+      <div class="metric"><b id="mRows">0</b><span>평가 행</span></div>
+      <div class="metric"><b id="mAverage">0.0</b><span>전체 평균</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>모둠별 최종 점수</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="summaryHead"></tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>점수 분포</h2>
+      <div class="bar-list" id="barList"></div>
+    </section>
+
+    <section class="panel">
+      <h2>개별 응답</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>제출일시</th>
+              <th>학번</th>
+              <th>성명</th>
+              <th>소속</th>
+              <th>대상 모둠</th>
+              <th>집계</th>
+              <th>점수</th>
+              <th>의견</th>
+            </tr>
+          </thead>
+          <tbody id="rawBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const config = window.EVAL_CONFIG;
+    const isConfigured = config.appsScriptUrl && !config.appsScriptUrl.includes("PASTE_");
+    let rows = [];
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function showMessage(text, isError = false) {
+      const message = document.querySelector("#message");
+      message.textContent = text;
+      message.classList.toggle("error", isError);
+      message.classList.remove("hidden");
+    }
+
+    function format(value) {
+      return Number.isFinite(value) ? value.toFixed(1) : "0.0";
+    }
+
+    function latestRowsOnly(items) {
+      const latest = new Map();
+      items.forEach(item => {
+        const key = `${item.studentId}::${item.targetTeamId}`;
+        const previous = latest.get(key);
+        if (!previous || new Date(item.submittedAt) > new Date(previous.submittedAt)) {
+          latest.set(key, item);
+        }
+      });
+      return [...latest.values()];
+    }
+
+    function included(row) {
+      return !(config.excludeSelfTeam && row.studentTeamId === row.targetTeamId);
+    }
+
+    function summary() {
+      const active = latestRowsOnly(rows).filter(included);
+      return config.teams.map(team => {
+        const teamRows = active.filter(row => row.targetTeamId === team.id);
+        const average = teamRows.length
+          ? teamRows.reduce((sum, row) => sum + Number(row.percent || 0), 0) / teamRows.length
+          : 0;
+        const criteria = config.criteria.map(criterion => {
+          const values = teamRows
+            .map(row => Number(row.scores?.[criterion.id]))
+            .filter(Number.isFinite);
+          const avg = values.length
+            ? values.reduce((sum, value) => sum + value, 0) / values.length
+            : 0;
+          return { id: criterion.id, name: criterion.name, average: avg };
+        });
+        return { team, count: teamRows.length, average, criteria };
+      }).sort((a, b) => b.average - a.average || a.team.name.localeCompare(b.team.name, "ko"));
+    }
+
+    function render() {
+      const latest = latestRowsOnly(rows);
+      const active = latest.filter(included);
+      const students = new Set(rows.map(row => row.studentId).filter(Boolean));
+      const average = active.length
+        ? active.reduce((sum, row) => sum + Number(row.percent || 0), 0) / active.length
+        : 0;
+
+      document.querySelector("#subtitle").textContent = config.className;
+      document.querySelector("#setupNotice").classList.toggle("hidden", isConfigured);
+      document.querySelector("#mTeams").textContent = config.teams.length;
+      document.querySelector("#mStudents").textContent = students.size;
+      document.querySelector("#mRows").textContent = rows.length;
+      document.querySelector("#mAverage").textContent = format(average);
+
+      document.querySelector("#summaryHead").innerHTML = [
+        "순위", "모둠", "응답 수", "최종 점수",
+        ...config.criteria.map(item => `${item.name} 평균`)
+      ].map(item => `<th>${escapeHtml(item)}</th>`).join("");
+
+      const summaryRows = summary();
+      document.querySelector("#summaryBody").innerHTML = summaryRows.length
+        ? summaryRows.map((item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${escapeHtml(item.team.name)}</strong><br>${escapeHtml(item.team.topic || "")}</td>
+            <td>${item.count}</td>
+            <td><strong>${format(item.average)}</strong></td>
+            ${item.criteria.map(criterion => `<td>${format(criterion.average)}</td>`).join("")}
+          </tr>
+        `).join("")
+        : `<tr><td colspan="${4 + config.criteria.length}">아직 응답이 없습니다.</td></tr>`;
+
+      document.querySelector("#barList").innerHTML = summaryRows.length
+        ? summaryRows.map(item => `
+          <div>
+            <div class="bar-head"><span>${escapeHtml(item.team.name)}</span><span>${format(item.average)}</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, item.average))}%"></div></div>
+          </div>
+        `).join("")
+        : `<p>응답을 불러오면 그래프가 표시됩니다.</p>`;
+
+      document.querySelector("#rawBody").innerHTML = latest
+        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+        .map(row => `
+          <tr>
+            <td>${escapeHtml(new Date(row.submittedAt).toLocaleString("ko-KR"))}</td>
+            <td>${escapeHtml(row.studentId)}</td>
+            <td>${escapeHtml(row.studentName)}</td>
+            <td>${escapeHtml(row.studentTeamName)}</td>
+            <td>${escapeHtml(row.targetTeamName)}</td>
+            <td>${included(row) ? "포함" : "제외"}</td>
+            <td><strong>${format(Number(row.percent))}</strong></td>
+            <td>${escapeHtml(row.comment || "")}</td>
+          </tr>
+        `).join("") || `<tr><td colspan="8">아직 응답이 없습니다.</td></tr>`;
+    }
+
+    function loadResponses() {
+      if (!isConfigured) {
+        showMessage("Google Apps Script URL을 먼저 설정하세요.", true);
+        return;
+      }
+      const callbackName = `receiveResponses_${Date.now()}`;
+      window[callbackName] = data => {
+        if (data.error) {
+          showMessage("교수자 확인 키가 맞지 않거나 응답을 불러올 권한이 없습니다.", true);
+          delete window[callbackName];
+          script.remove();
+          return;
+        }
+        rows = Array.isArray(data.rows) ? data.rows : [];
+        render();
+        showMessage(`${rows.length}개 평가 행을 불러왔습니다.`);
+        delete window[callbackName];
+        script.remove();
+      };
+      const script = document.createElement("script");
+      const key = encodeURIComponent(document.querySelector("#adminKey").value.trim());
+      if (key) localStorage.setItem("peerEvalAdminKey", document.querySelector("#adminKey").value.trim());
+      script.src = `${config.appsScriptUrl}?callback=${callbackName}&key=${key}&t=${Date.now()}`;
+      script.onerror = () => showMessage("응답을 불러오지 못했습니다. Apps Script 배포 권한을 확인하세요.", true);
+      document.body.appendChild(script);
+    }
+
+    function downloadCsv(filename, tableRows) {
+      const csv = tableRows.map(row => row.map(cell => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelector("#loadBtn").addEventListener("click", loadResponses);
+    document.querySelector("#adminKey").value = localStorage.getItem("peerEvalAdminKey") || "";
+    document.querySelector("#exportSummary").addEventListener("click", () => {
+      const header = ["순위", "모둠", "응답 수", "최종 점수", ...config.criteria.map(item => `${item.name} 평균`)];
+      const body = summary().map((item, index) => [
+        index + 1,
+        item.team.name,
+        item.count,
+        format(item.average),
+        ...item.criteria.map(criterion => format(criterion.average))
+      ]);
+      downloadCsv("team-summary.csv", [header, ...body]);
+    });
+    document.querySelector("#exportRaw").addEventListener("click", () => {
+      const header = ["제출일시", "학번", "성명", "소속 모둠", "대상 모둠", "집계 포함", "점수", ...config.criteria.map(item => item.name), "의견"];
+      const body = latestRowsOnly(rows).map(row => [
+        row.submittedAt,
+        row.studentId,
+        row.studentName,
+        row.studentTeamName,
+        row.targetTeamName,
+        included(row) ? "포함" : "제외",
+        format(Number(row.percent)),
+        ...config.criteria.map(criterion => row.scores?.[criterion.id] ?? ""),
+        row.comment || ""
+      ]);
+      downloadCsv("evaluation-raw.csv", [header, ...body]);
+    });
+
+    render();
+  </script>
+</body>
+</html>

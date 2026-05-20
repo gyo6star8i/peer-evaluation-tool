@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>팀프로젝트 동료평가</title>
+  <script src="config.js"></script>
+  <style>
+    :root {
+      --bg: #f5f4ef;
+      --ink: #222826;
+      --muted: #64706d;
+      --line: #d8ded9;
+      --surface: #fff;
+      --soft: #eef5f2;
+      --accent: #166b5d;
+      --accent-2: #e9aa42;
+      --danger: #b83a30;
+      --shadow: 0 14px 34px rgba(31, 42, 38, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: linear-gradient(180deg, #eaf2ef, var(--bg));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      line-height: 1.55;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .wrap {
+      width: min(960px, 100%);
+      margin: 0 auto;
+      padding: 22px 14px 42px;
+    }
+
+    header {
+      padding: 20px 0 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 7vw, 44px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .panel, .team-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      outline-color: var(--accent);
+    }
+
+    textarea {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    .team-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .team-card {
+      padding: 16px;
+    }
+
+    .team-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .team-head h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    .team-head p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .badge {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .criteria {
+      display: grid;
+      gap: 10px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: minmax(112px, 0.8fr) minmax(0, 1fr) 44px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfb;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      accent-color: var(--accent);
+    }
+
+    .actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 3;
+      display: grid;
+      gap: 9px;
+      padding: 14px 0 0;
+      background: linear-gradient(180deg, rgba(245, 244, 239, 0), var(--bg) 24%);
+    }
+
+    button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .notice {
+      padding: 12px 13px;
+      border-left: 4px solid var(--accent-2);
+      border-radius: 7px;
+      background: #fff7e7;
+      color: #564228;
+    }
+
+    .error {
+      border-left-color: var(--danger);
+      background: #fff0ee;
+      color: #6e2923;
+    }
+
+    .hidden { display: none !important; }
+
+    .footer-link {
+      margin-top: 18px;
+      text-align: center;
+    }
+
+    .footer-link a {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    iframe {
+      width: 0;
+      height: 0;
+      border: 0;
+      position: absolute;
+      left: -9999px;
+    }
+
+    @media (max-width: 680px) {
+      .grid, .score-row {
+        grid-template-columns: 1fr;
+      }
+
+      .score-row strong {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1 id="appTitle">팀프로젝트 동료평가</h1>
+      <p class="lead" id="className">발표를 들은 뒤 모둠별 점수를 입력해 주세요.</p>
+    </header>
+
+    <div class="panel">
+      <div class="grid">
+        <div class="field">
+          <label for="studentId">학번</label>
+          <input id="studentId" autocomplete="off" inputmode="numeric" placeholder="예: 20260001" required>
+        </div>
+        <div class="field">
+          <label for="studentName">성명</label>
+          <input id="studentName" autocomplete="name" placeholder="예: 김민지" required>
+        </div>
+        <div class="field">
+          <label for="studentTeam">소속 모둠</label>
+          <select id="studentTeam" required></select>
+        </div>
+        <div class="field">
+          <label for="classCode">수업 코드</label>
+          <input id="classCode" autocomplete="off" placeholder="선택 입력">
+        </div>
+      </div>
+    </div>
+
+    <div class="notice hidden" id="setupNotice">
+      아직 Google Apps Script URL이 설정되지 않았습니다. 제출 화면 미리보기는 가능하지만 실제 수합은 `config.js` 설정 뒤 작동합니다.
+    </div>
+
+    <form id="evalForm" method="post" target="submitFrame">
+      <input type="hidden" name="payload" id="payload">
+      <div class="team-list" id="teamList"></div>
+      <div class="actions">
+        <button class="primary" type="submit" id="submitBtn">평가 제출</button>
+        <button class="secondary" type="button" id="resetBtn">점수 초기화</button>
+        <div class="notice hidden" id="message"></div>
+      </div>
+    </form>
+
+    <iframe name="submitFrame" id="submitFrame"></iframe>
+
+    <div class="footer-link">
+      <a href="admin.html">교수자 집계 화면</a>
+    </div>
+  </div>
+
+  <script>
+    const config = window.EVAL_CONFIG;
+    const isConfigured = config.appsScriptUrl && !config.appsScriptUrl.includes("PASTE_");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function showMessage(text, isError = false) {
+      const message = document.querySelector("#message");
+      message.textContent = text;
+      message.classList.toggle("error", isError);
+      message.classList.remove("hidden");
+    }
+
+    function render() {
+      document.title = config.appTitle;
+      document.querySelector("#appTitle").textContent = config.appTitle;
+      document.querySelector("#className").textContent = config.className;
+      document.querySelector("#setupNotice").classList.toggle("hidden", isConfigured);
+
+      const teamOptions = config.teams
+        .map(team => `<option value="${team.id}">${escapeHtml(team.name)}</option>`)
+        .join("");
+      document.querySelector("#studentTeam").innerHTML = `<option value="">선택</option>${teamOptions}`;
+
+      document.querySelector("#teamList").innerHTML = config.teams.map(team => `
+        <section class="team-card" data-team="${team.id}">
+          <div class="team-head">
+            <div>
+              <h2>${escapeHtml(team.name)}</h2>
+              <p>${escapeHtml(team.topic || "발표 평가")}</p>
+            </div>
+            <span class="badge" data-total="${team.id}">100.0점</span>
+          </div>
+          <div class="criteria">
+            ${config.criteria.map(criterion => `
+              <div class="score-row">
+                <label for="${team.id}-${criterion.id}">${escapeHtml(criterion.name)}</label>
+                <input
+                  type="range"
+                  id="${team.id}-${criterion.id}"
+                  min="0"
+                  max="${criterion.max}"
+                  step="1"
+                  value="${criterion.max}"
+                  data-team-id="${team.id}"
+                  data-criterion-id="${criterion.id}"
+                >
+                <strong data-score-label="${team.id}-${criterion.id}">${criterion.max}</strong>
+              </div>
+            `).join("")}
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label for="${team.id}-comment">의견</label>
+            <textarea id="${team.id}-comment" data-comment="${team.id}" placeholder="좋았던 점이나 개선점을 짧게 입력하세요."></textarea>
+          </div>
+        </section>
+      `).join("");
+      updateTotals();
+    }
+
+    function teamPercent(teamId) {
+      const totalWeight = config.criteria.reduce((sum, item) => sum + Number(item.weight || 0), 0) || 1;
+      const score = config.criteria.reduce((sum, criterion) => {
+        const input = document.querySelector(`[data-team-id="${teamId}"][data-criterion-id="${criterion.id}"]`);
+        return sum + (Number(input.value) / Number(criterion.max || 1)) * Number(criterion.weight || 0);
+      }, 0);
+      return score / totalWeight * 100;
+    }
+
+    function updateTotals() {
+      config.teams.forEach(team => {
+        document.querySelector(`[data-total="${team.id}"]`).textContent = `${teamPercent(team.id).toFixed(1)}점`;
+      });
+    }
+
+    function buildPayload() {
+      const studentId = document.querySelector("#studentId").value.trim();
+      const studentName = document.querySelector("#studentName").value.trim();
+      const studentTeamId = document.querySelector("#studentTeam").value;
+      const classCode = document.querySelector("#classCode").value.trim();
+
+      if (!studentId || !studentName || !studentTeamId) {
+        throw new Error("학번, 성명, 소속 모둠을 모두 입력하세요.");
+      }
+
+      const evaluations = config.teams.map(team => {
+        const scores = {};
+        config.criteria.forEach(criterion => {
+          const input = document.querySelector(`[data-team-id="${team.id}"][data-criterion-id="${criterion.id}"]`);
+          scores[criterion.id] = Number(input.value);
+        });
+        return {
+          targetTeamId: team.id,
+          targetTeamName: team.name,
+          percent: Number(teamPercent(team.id).toFixed(2)),
+          scores,
+          comment: document.querySelector(`[data-comment="${team.id}"]`).value.trim()
+        };
+      });
+
+      return {
+        submittedAt: new Date().toISOString(),
+        classCode,
+        studentId,
+        studentName,
+        studentTeamId,
+        studentTeamName: config.teams.find(team => team.id === studentTeamId)?.name || "",
+        appTitle: config.appTitle,
+        criteria: config.criteria,
+        teams: config.teams,
+        excludeSelfTeam: config.excludeSelfTeam,
+        evaluations
+      };
+    }
+
+    document.addEventListener("input", event => {
+      if (event.target.matches("[data-team-id][data-criterion-id]")) {
+        const key = `${event.target.dataset.teamId}-${event.target.dataset.criterionId}`;
+        document.querySelector(`[data-score-label="${key}"]`).textContent = event.target.value;
+        updateTotals();
+      }
+    });
+
+    document.querySelector("#evalForm").addEventListener("submit", event => {
+      event.preventDefault();
+      try {
+        const payload = buildPayload();
+        if (!isConfigured) {
+          showMessage("설정 전 미리보기 상태입니다. Google Apps Script URL을 설정하면 실제 제출됩니다.", true);
+          return;
+        }
+        const form = event.currentTarget;
+        form.action = config.appsScriptUrl;
+        document.querySelector("#payload").value = JSON.stringify(payload);
+        document.querySelector("#submitBtn").disabled = true;
+        form.submit();
+        showMessage("제출 중입니다. 잠시만 기다려 주세요.");
+        setTimeout(() => {
+          document.querySelector("#submitBtn").disabled = false;
+          showMessage("제출했습니다. 같은 학번으로 다시 제출하면 집계 화면에서는 최신 제출을 기준으로 볼 수 있습니다.");
+        }, 1400);
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    });
+
+    document.querySelector("#resetBtn").addEventListener("click", () => {
+      config.teams.forEach(team => {
+        config.criteria.forEach(criterion => {
+          const input = document.querySelector(`[data-team-id="${team.id}"][data-criterion-id="${criterion.id}"]`);
+          input.value = criterion.max;
+          document.querySelector(`[data-score-label="${team.id}-${criterion.id}"]`).textContent = criterion.max;
+        });
+        document.querySelector(`[data-comment="${team.id}"]`).value = "";
+      });
+      updateTotals();
+      showMessage("점수를 초기화했습니다.");
+    });
+
+    render();
+  </script>
+</body>
+</html>
