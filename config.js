@@ -3,7 +3,7 @@ window.EVAL_CONFIG = {
   className: "1학년 팀프로젝트 발표",
 
   // Google Apps Script 배포 뒤 발급된 웹 앱 URL로 교체하세요.
-  appsScriptUrl: "https://script.google.com/macros/s/AKfycbxyrHN_yK4PrmbIjenWtOToTET5WQhY1QOgTeSpyogGzGIiLyBSjN3gBJDCsplDU6dTCA/exec",
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbxoN9FTQRKFGFNLbID0dlB5LYrulOpcYFUmjo0q5oGjlPaMgOVjiA4petMR19bSh2NDvQ/exec",
 
   // 학과별 모둠 정보를 수정하세요. sheetName은 Google Sheet 탭 이름과 같아야 합니다.
   classes: [
