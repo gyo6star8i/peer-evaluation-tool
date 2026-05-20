@@ -30,7 +30,7 @@
       line-height: 1.55;
     }
 
-    button, input { font: inherit; }
+    button, input, select { font: inherit; }
 
     .wrap {
       width: min(1120px, 100%);
@@ -63,6 +63,17 @@
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
+    }
+
+    .toolbar input,
+    .toolbar select {
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      outline-color: var(--accent);
     }
 
     button, a.button {
@@ -219,6 +230,7 @@
         <p class="lead" id="subtitle">응답을 불러와 모둠별 점수를 계산합니다.</p>
       </div>
       <div class="toolbar">
+        <select id="department"></select>
         <input id="adminKey" type="password" placeholder="교수자 확인 키">
         <button class="primary" type="button" id="loadBtn">응답 불러오기</button>
         <button class="secondary" type="button" id="exportSummary">집계 CSV</button>
@@ -281,6 +293,7 @@
   <script>
     const config = window.EVAL_CONFIG;
     const isConfigured = config.appsScriptUrl && !config.appsScriptUrl.includes("PASTE_");
+    let selectedClassId = config.classes?.[0]?.id || "";
     let rows = [];
 
     function escapeHtml(value) {
@@ -303,10 +316,14 @@
       return Number.isFinite(value) ? value.toFixed(1) : "0.0";
     }
 
+    function selectedClass() {
+      return config.classes.find(item => item.id === selectedClassId) || config.classes[0];
+    }
+
     function latestRowsOnly(items) {
       const latest = new Map();
       items.forEach(item => {
-        const key = `${item.studentId}::${item.targetTeamId}`;
+        const key = `${item.departmentId || selectedClassId}::${item.studentId}::${item.targetTeamId}`;
         const previous = latest.get(key);
         if (!previous || new Date(item.submittedAt) > new Date(previous.submittedAt)) {
           latest.set(key, item);
@@ -321,7 +338,7 @@
 
     function summary() {
       const active = latestRowsOnly(rows).filter(included);
-      return config.teams.map(team => {
+      return selectedClass().teams.map(team => {
         const teamRows = active.filter(row => row.targetTeamId === team.id);
         const average = teamRows.length
           ? teamRows.reduce((sum, row) => sum + Number(row.percent || 0), 0) / teamRows.length
@@ -340,6 +357,7 @@
     }
 
     function render() {
+      const activeClass = selectedClass();
       const latest = latestRowsOnly(rows);
       const active = latest.filter(included);
       const students = new Set(rows.map(row => row.studentId).filter(Boolean));
@@ -347,9 +365,12 @@
         ? active.reduce((sum, row) => sum + Number(row.percent || 0), 0) / active.length
         : 0;
 
-      document.querySelector("#subtitle").textContent = config.className;
+      document.querySelector("#subtitle").textContent = `${config.className} · ${activeClass.name}`;
       document.querySelector("#setupNotice").classList.toggle("hidden", isConfigured);
-      document.querySelector("#mTeams").textContent = config.teams.length;
+      document.querySelector("#department").innerHTML = config.classes
+        .map(item => `<option value="${item.id}" ${item.id === activeClass.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`)
+        .join("");
+      document.querySelector("#mTeams").textContent = activeClass.teams.length;
       document.querySelector("#mStudents").textContent = students.size;
       document.querySelector("#mRows").textContent = rows.length;
       document.querySelector("#mAverage").textContent = format(average);
@@ -419,7 +440,7 @@
       const script = document.createElement("script");
       const key = encodeURIComponent(document.querySelector("#adminKey").value.trim());
       if (key) localStorage.setItem("peerEvalAdminKey", document.querySelector("#adminKey").value.trim());
-      script.src = `${config.appsScriptUrl}?callback=${callbackName}&key=${key}&t=${Date.now()}`;
+      script.src = `${config.appsScriptUrl}?callback=${callbackName}&key=${key}&department=${encodeURIComponent(selectedClass().sheetName || selectedClass().name)}&t=${Date.now()}`;
       script.onerror = () => showMessage("응답을 불러오지 못했습니다. Apps Script 배포 권한을 확인하세요.", true);
       document.body.appendChild(script);
     }
@@ -439,6 +460,12 @@
 
     document.querySelector("#loadBtn").addEventListener("click", loadResponses);
     document.querySelector("#adminKey").value = localStorage.getItem("peerEvalAdminKey") || "";
+    document.querySelector("#department").addEventListener("change", event => {
+      selectedClassId = event.target.value;
+      rows = [];
+      render();
+      showMessage("학과를 변경했습니다. 응답 불러오기를 눌러 주세요.");
+    });
     document.querySelector("#exportSummary").addEventListener("click", () => {
       const header = ["순위", "모둠", "응답 수", "최종 점수", ...config.criteria.map(item => `${item.name} 평균`)];
       const body = summary().map((item, index) => [

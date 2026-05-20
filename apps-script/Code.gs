@@ -1,13 +1,13 @@
-const SHEET_NAME = "responses";
-
 function doPost(e) {
   const payload = JSON.parse(e.parameter.payload || "{}");
-  const sheet = getSheet_();
+  const sheet = getSheet_(payload.sheetName || payload.departmentName || "responses");
   ensureHeader_(sheet);
 
   const rows = (payload.evaluations || []).map(item => [
     new Date(),
     payload.submittedAt || "",
+    payload.departmentId || "",
+    payload.departmentName || "",
     payload.classCode || "",
     payload.studentId || "",
     payload.studentName || "",
@@ -39,22 +39,25 @@ function doGet(e) {
       .createTextOutput(denied)
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-  const rows = readRows_();
+  const rows = readRows_(e.parameter.department || "responses");
   const output = `${callback}(${JSON.stringify({ rows })});`;
   return ContentService
     .createTextOutput(output)
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
-function getSheet_() {
+function getSheet_(sheetName) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  return spreadsheet.getSheetByName(SHEET_NAME) || spreadsheet.insertSheet(SHEET_NAME);
+  const safeName = String(sheetName || "responses").replace(/[\\/?*[\]:]/g, "").slice(0, 99) || "responses";
+  return spreadsheet.getSheetByName(safeName) || spreadsheet.insertSheet(safeName);
 }
 
 function ensureHeader_(sheet) {
   const header = [
     "serverTimestamp",
     "submittedAt",
+    "departmentId",
+    "departmentName",
     "classCode",
     "studentId",
     "studentName",
@@ -81,8 +84,8 @@ function ensureHeader_(sheet) {
   }
 }
 
-function readRows_() {
-  const sheet = getSheet_();
+function readRows_(sheetName) {
+  const sheet = getSheet_(sheetName);
   ensureHeader_(sheet);
   const values = sheet.getDataRange().getValues();
   if (values.length <= 1) return [];
@@ -96,6 +99,8 @@ function readRows_() {
     return {
       serverTimestamp: toIso_(item.serverTimestamp),
       submittedAt: item.submittedAt || toIso_(item.serverTimestamp),
+      departmentId: String(item.departmentId || ""),
+      departmentName: String(item.departmentName || ""),
       classCode: item.classCode || "",
       studentId: String(item.studentId || ""),
       studentName: String(item.studentName || ""),

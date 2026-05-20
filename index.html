@@ -253,6 +253,10 @@
           <input id="studentName" autocomplete="name" placeholder="예: 김민지" required>
         </div>
         <div class="field">
+          <label for="department">학과</label>
+          <select id="department" required></select>
+        </div>
+        <div class="field">
           <label for="studentTeam">소속 모둠</label>
           <select id="studentTeam" required></select>
         </div>
@@ -287,6 +291,7 @@
   <script>
     const config = window.EVAL_CONFIG;
     const isConfigured = config.appsScriptUrl && !config.appsScriptUrl.includes("PASTE_");
+    let selectedClassId = config.classes?.[0]?.id || "";
 
     function escapeHtml(value) {
       return String(value ?? "")
@@ -304,18 +309,28 @@
       message.classList.remove("hidden");
     }
 
+    function selectedClass() {
+      return config.classes.find(item => item.id === selectedClassId) || config.classes[0];
+    }
+
     function render() {
+      const activeClass = selectedClass();
       document.title = config.appTitle;
       document.querySelector("#appTitle").textContent = config.appTitle;
-      document.querySelector("#className").textContent = config.className;
+      document.querySelector("#className").textContent = `${config.className} · ${activeClass.name}`;
       document.querySelector("#setupNotice").classList.toggle("hidden", isConfigured);
 
-      const teamOptions = config.teams
+      const classOptions = config.classes
+        .map(item => `<option value="${item.id}" ${item.id === activeClass.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`)
+        .join("");
+      document.querySelector("#department").innerHTML = classOptions;
+
+      const teamOptions = activeClass.teams
         .map(team => `<option value="${team.id}">${escapeHtml(team.name)}</option>`)
         .join("");
       document.querySelector("#studentTeam").innerHTML = `<option value="">선택</option>${teamOptions}`;
 
-      document.querySelector("#teamList").innerHTML = config.teams.map(team => `
+      document.querySelector("#teamList").innerHTML = activeClass.teams.map(team => `
         <section class="team-card" data-team="${team.id}">
           <div class="team-head">
             <div>
@@ -361,12 +376,13 @@
     }
 
     function updateTotals() {
-      config.teams.forEach(team => {
+      selectedClass().teams.forEach(team => {
         document.querySelector(`[data-total="${team.id}"]`).textContent = `${teamPercent(team.id).toFixed(1)}점`;
       });
     }
 
     function buildPayload() {
+      const activeClass = selectedClass();
       const studentId = document.querySelector("#studentId").value.trim();
       const studentName = document.querySelector("#studentName").value.trim();
       const studentTeamId = document.querySelector("#studentTeam").value;
@@ -376,7 +392,7 @@
         throw new Error("학번, 성명, 소속 모둠을 모두 입력하세요.");
       }
 
-      const evaluations = config.teams.map(team => {
+      const evaluations = activeClass.teams.map(team => {
         const scores = {};
         config.criteria.forEach(criterion => {
           const input = document.querySelector(`[data-team-id="${team.id}"][data-criterion-id="${criterion.id}"]`);
@@ -393,14 +409,17 @@
 
       return {
         submittedAt: new Date().toISOString(),
+        departmentId: activeClass.id,
+        departmentName: activeClass.name,
+        sheetName: activeClass.sheetName || activeClass.name,
         classCode,
         studentId,
         studentName,
         studentTeamId,
-        studentTeamName: config.teams.find(team => team.id === studentTeamId)?.name || "",
+        studentTeamName: activeClass.teams.find(team => team.id === studentTeamId)?.name || "",
         appTitle: config.appTitle,
         criteria: config.criteria,
-        teams: config.teams,
+        teams: activeClass.teams,
         excludeSelfTeam: config.excludeSelfTeam,
         evaluations
       };
@@ -438,7 +457,7 @@
     });
 
     document.querySelector("#resetBtn").addEventListener("click", () => {
-      config.teams.forEach(team => {
+      selectedClass().teams.forEach(team => {
         config.criteria.forEach(criterion => {
           const input = document.querySelector(`[data-team-id="${team.id}"][data-criterion-id="${criterion.id}"]`);
           input.value = criterion.max;
@@ -448,6 +467,12 @@
       });
       updateTotals();
       showMessage("점수를 초기화했습니다.");
+    });
+
+    document.querySelector("#department").addEventListener("change", event => {
+      selectedClassId = event.target.value;
+      render();
+      showMessage("학과에 맞춰 평가 모둠을 바꿨습니다.");
     });
 
     render();
